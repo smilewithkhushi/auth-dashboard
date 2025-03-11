@@ -1,134 +1,205 @@
 "use client"
 
-import * as React from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
-import { cn } from "@/lib/utils"
-// import { Icons } from "@/components/icons"
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-  navigationMenuTriggerStyle,
-} from "@/app/components/ui/navigation-menu"
+import { usePathname, useRouter } from "next/navigation"
+import axios from "axios"
+import { Button } from "@/components/ui/button"
+import { Menu, X } from "lucide-react"
 
-const components: { title: string; href: string; description: string }[] = [
-  {
-    title: "Alert Dialog",
-    href: "/docs/primitives/alert-dialog",
-    description:
-      "A modal dialog that interrupts the user with important content and expects a response.",
+export function Navbar() {
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [user, setUser] = useState(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const pathname = usePathname()
+  const router = useRouter()
+
+  useEffect(() => {
+    async function checkAuthStatus() {
+      try {
+        const response = await axios.get('/api/auth/me')
+        setUser(response.data.user)
+        setIsLoggedIn(true)
+      } catch (error) {
+        setIsLoggedIn(false)
+        setUser(null)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    checkAuthStatus()
+  }, [pathname])
+
+  const handleLogout = async () => {
+    try {
+      await axios.post('/api/auth/logout')
+      setIsLoggedIn(false)
+      setUser(null)
+      router.push('/')
+      setIsMenuOpen(false)
+    } catch (error) {
+      console.error("Logout failed", error)
+    }
   }
-]
 
-export function NavbarMenu() {
+  const toggleMenu = () => {
+    setIsMenuOpen(!isMenuOpen)
+  }
+
+  const closeMenu = () => {
+    setIsMenuOpen(false)
+  }
+
+  const navLinks = [
+    { name: "Home", path: "/" },
+    { name: "About", path: "/about" },
+    { name: "Explore", path: "/explore" },
+  ]
+
+  const isActive = (path) => {
+    return pathname === path
+  }
+
   return (
-    <NavigationMenu>
-      <NavigationMenuList>
-     
-        <NavigationMenuItem>
-          <Link href="/login" legacyBehavior passHref>
-            <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-              Explore
-            </NavigationMenuLink>
-          </Link>
-        </NavigationMenuItem>
+    <nav className="bg-white border-b border-gray-200 shadow-sm">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-16">
+          {/* Logo and left side nav links - shown on larger screens */}
+          <div className="flex">
+            <div className="flex-shrink-0 flex items-center">
+              <Link href="/" className="font-bold text-xl text-blue-600">
+                AppName
+              </Link>
+            </div>
+            
+            {/* Desktop Navigation */}
+            <div className="hidden sm:ml-6 sm:flex sm:items-center">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.path}
+                  href={link.path}
+                  className={`px-3 py-2 rounded-md text-sm font-medium ${
+                    isActive(link.path)
+                      ? "text-blue-600"
+                      : "text-gray-700 hover:text-blue-600 hover:bg-gray-50"
+                  }`}
+                >
+                  {link.name}
+                </Link>
+              ))}
+            </div>
+          </div>
 
-        <NavigationMenuItem>
-          <Link href="/login" legacyBehavior passHref>
-            <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-              Login
-            </NavigationMenuLink>
-          </Link>
-        </NavigationMenuItem>
+          {/* Right side - Auth buttons or user menu */}
+          <div className="hidden sm:flex sm:items-center">
+            {isLoading ? (
+              <div className="w-12 h-5 bg-gray-200 animate-pulse rounded"></div>
+            ) : isLoggedIn ? (
+              <div className="flex items-center space-x-3">
+                <Link href="/dashboard" className="text-sm font-medium text-gray-700 hover:text-blue-600">
+                  Dashboard
+                </Link>
+                <span className="text-gray-500">|</span>
+                <span className="text-sm text-gray-700 font-medium">
+                  {user?.name}
+                </span>
+                <Button variant="outline" size="sm" onClick={handleLogout}>
+                  Logout
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-3">
+                <Link href="/login">
+                  <Button variant="ghost" size="sm">
+                    Log in
+                  </Button>
+                </Link>
+                <Link href="/signup">
+                  <Button size="sm">Sign up</Button>
+                </Link>
+              </div>
+            )}
+          </div>
 
-        <NavigationMenuItem>
-          <Link href="/signup" legacyBehavior passHref>
-            <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-              Sign Up
-            </NavigationMenuLink>
-          </Link>
-        </NavigationMenuItem>
-      </NavigationMenuList>
-    </NavigationMenu>
+          {/* Mobile menu button */}
+          <div className="flex items-center sm:hidden">
+            <button
+              onClick={toggleMenu}
+              className="inline-flex items-center justify-center p-2 rounded-md text-gray-700 hover:text-blue-600 hover:bg-gray-50 focus:outline-none"
+              aria-expanded="false"
+            >
+              <span className="sr-only">Open main menu</span>
+              {isMenuOpen ? (
+                <X className="block h-6 w-6" aria-hidden="true" />
+              ) : (
+                <Menu className="block h-6 w-6" aria-hidden="true" />
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile menu, show/hide based on menu state */}
+      <div className={`sm:hidden ${isMenuOpen ? "block" : "hidden"}`}>
+        <div className="px-2 pt-2 pb-3 space-y-1">
+          {navLinks.map((link) => (
+            <Link
+              key={link.path}
+              href={link.path}
+              className={`block px-3 py-2 rounded-md text-base font-medium ${
+                isActive(link.path)
+                  ? "bg-blue-50 text-blue-600"
+                  : "text-gray-700 hover:bg-gray-50 hover:text-blue-600"
+              }`}
+              onClick={closeMenu}
+            >
+              {link.name}
+            </Link>
+          ))}
+
+          {!isLoading && (
+            <>
+              {isLoggedIn ? (
+                <>
+                  <div className="border-t border-gray-200 pt-3 mt-3">
+                    <div className="px-3 py-1 text-sm text-gray-500">
+                      Signed in as <span className="font-medium text-gray-700">{user?.name}</span>
+                    </div>
+                    <Link
+                      href="/dashboard"
+                      className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-blue-600"
+                      onClick={closeMenu}
+                    >
+                      Dashboard
+                    </Link>
+                    <button
+                      className="w-full text-left block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-blue-600"
+                      onClick={handleLogout}
+                    >
+                      Logout
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="border-t border-gray-200 pt-4 mt-3 flex flex-col space-y-2 px-3">
+                  <Link href="/login" onClick={closeMenu}>
+                    <Button variant="outline" className="w-full">
+                      Log in
+                    </Button>
+                  </Link>
+                  <Link href="/signup" onClick={closeMenu}>
+                    <Button className="w-full">
+                      Sign up
+                    </Button>
+                  </Link>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </nav>
   )
 }
-
-const ListItem = React.forwardRef<
-  React.ElementRef<"a">,
-  React.ComponentPropsWithoutRef<"a">
->(({ className, title, children, ...props }, ref) => {
-  return (
-    <li>
-      <NavigationMenuLink asChild>
-        <a
-          ref={ref}
-          className={cn(
-            "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
-            className
-          )}
-          {...props}
-        >
-          <div className="text-sm font-medium leading-none">{title}</div>
-          <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
-            {children}
-          </p>
-        </a>
-      </NavigationMenuLink>
-    </li>
-  )
-})
-ListItem.displayName = "ListItem"
-
-
-// <NavigationMenuItem>
-// <NavigationMenuTrigger>Getting started</NavigationMenuTrigger>
-// <NavigationMenuContent>
-//   <ul className="grid gap-3 p-4 md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr]">
-//     <li className="row-span-3">
-//       <NavigationMenuLink asChild>
-//         <a
-//           className="flex h-full w-full select-none flex-col justify-end rounded-md bg-gradient-to-b from-muted/50 to-muted p-6 no-underline outline-none focus:shadow-md"
-//           href="/"
-//         >
-
-//           <div className="mb-2 mt-4 text-lg font-medium">
-//             shadcn/ui
-//           </div>
-//           <p className="text-sm leading-tight text-muted-foreground">
-//             Beautifully designed components built with Radix UI and
-//             Tailwind CSS.
-//           </p>
-//         </a>
-//       </NavigationMenuLink>
-//     </li>
-//     <ListItem href="/docs" title="Introduction">
-//       Re-usable components built using Radix UI and Tailwind CSS.
-//     </ListItem>
-//     <ListItem href="/docs/installation" title="Installation">
-//       How to install dependencies and structure your app.
-//     </ListItem>
-//     <ListItem href="/docs/primitives/typography" title="Typography">
-//       Styles for headings, paragraphs, lists...etc
-//     </ListItem>
-//   </ul>
-// </NavigationMenuContent>
-// </NavigationMenuItem>
-// <NavigationMenuItem>
-// <NavigationMenuTrigger>Components</NavigationMenuTrigger>
-// <NavigationMenuContent>
-//   <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px] ">
-//     {components.map((component) => (
-//       <ListItem
-//         key={component.title}
-//         title={component.title}
-//         href={component.href}
-//       >
-//         {component.description}
-//       </ListItem>
-//     ))}
-//   </ul>
-// </NavigationMenuContent>
-// </NavigationMenuItem>

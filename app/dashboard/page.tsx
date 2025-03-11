@@ -57,10 +57,7 @@ export default function Dashboard() {
               <p>Name: {user?.name}</p>
               <p>Email: {user?.email}</p>
             </div>
-            
-            <Button variant="outline" onClick={handleLogout}>
-              Log Out
-            </Button>
+          
           </div>
         </CardContent>
       </Card>
